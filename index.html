@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Min karta över Lund</title>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #183b37;
+      --muted: #637570;
+      --paper: #f5f7f3;
+      --line: #dce5df;
+      --accent: #d85f43;
+      --green: #286b5b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      display: flex;
+      height: 100vh;
+      flex-direction: column;
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 88px;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      aspect-ratio: 1;
+      place-items: center;
+      border-radius: 12px;
+      color: #fff;
+      background: var(--green);
+      font-size: 21px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .map-label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    main {
+      display: grid;
+      flex: 1;
+      grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+      min-height: 0;
+    }
+
+    aside {
+      display: flex;
+      min-height: 0;
+      flex-direction: column;
+      padding: 24px 20px;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    #place-count {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    #search {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      background: var(--paper);
+      font: inherit;
+      font-size: 14px;
+    }
+
+    #category-filter {
+      width: 100%;
+      min-height: 42px;
+      margin-top: 8px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      background: #fff;
+      font: inherit;
+      font-size: 14px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    #search:focus-visible,
+    #category-filter:focus-visible,
+    .place-button:focus-visible,
+    #reset-map:focus-visible {
+      outline: 3px solid #e8a18f;
+      outline-offset: 2px;
+    }
+
+    #place-list {
+      display: grid;
+      flex: 1;
+      min-height: 0;
+      gap: 8px;
+      margin-top: 16px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      align-content: start;
+      padding-right: 4px;
+    }
+
+    .place-button {
+      display: block;
+      width: 100%;
+      padding: 13px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 150ms ease, background 150ms ease;
+    }
+
+    .place-button:hover,
+    .place-button[aria-current="true"] {
+      border-color: var(--green);
+      background: #eff6f1;
+    }
+
+    .place-button strong,
+    .place-button span {
+      display: block;
+    }
+
+    .place-button strong {
+      font-size: 14px;
+    }
+
+    .place-button .place-category {
+      width: fit-content;
+      margin-top: 7px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #fff;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .place-button span {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .map-pin {
+      position: relative;
+      display: block;
+      width: 24px;
+      height: 24px;
+      border: 2px solid #fff;
+      border-radius: 50% 50% 50% 0;
+      box-shadow: 0 1px 4px #183b3766;
+      transform: rotate(-45deg);
+    }
+
+    .map-pin::after {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      content: "";
+    }
+
+    #empty-state {
+      margin: 8px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .map-area {
+      position: relative;
+      min-height: 0;
+      padding: 16px;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #e5ece6;
+    }
+
+    #reset-map {
+      position: absolute;
+      z-index: 500;
+      top: 28px;
+      right: 28px;
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      background: #fff;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 6px;
+    }
+
+    .leaflet-popup-content h3 {
+      margin: 2px 0 6px;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 16px;
+    }
+
+    .leaflet-popup-content p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .leaflet-popup-content dl {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 8px;
+      margin: 10px 0 0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .leaflet-popup-content dt {
+      font-weight: 700;
+    }
+
+    .leaflet-popup-content dd {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    @media (max-width: 700px) {
+      header {
+        min-height: 76px;
+        padding: 13px 16px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .map-label {
+        display: none;
+      }
+
+      main {
+        grid-template-columns: 1fr;
+        flex: initial;
+      }
+
+      aside {
+        min-height: auto;
+        padding: 18px 16px;
+        overflow: visible;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      #place-list {
+        flex: initial;
+        max-height: 35vh;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      }
+
+      .map-area {
+        min-height: 55vh;
+        padding: 12px;
+      }
+
+      #map {
+        height: 55vh;
+        min-height: 360px;
+      }
+
+      #reset-map {
+        top: 22px;
+        right: 22px;
+      }
+
+      body {
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">L</div>
+      <div>
+        <h1>Den sista honans fälthandbok till Lund</h1>
+        <p>En taktisk karta över Lunds gränder, korridorer och dunkla hörn</p>
+      </div>
+    </div>
+    <span class="map-label">Lund, Skåne</span>
+  </header>
+
+  <main>
+    <aside aria-label="Platser på kartan">
+      <div class="section-heading">
+        <h2>Hitta en plats</h2>
+        <span id="place-count" aria-live="polite"></span>
+      </div>
+      <label for="search" class="sr-only">Sök bland platser</label>
+      <input id="search" type="search" placeholder="Sök plats..." autocomplete="off">
+      <label for="category-filter" class="sr-only">Filtrera efter kategori</label>
+      <select id="category-filter">
+        <option value="">Alla kategorier</option>
+      </select>
+      <div id="place-list"></div>
+    </aside>
+    <section class="map-area" aria-label="Interaktiv karta">
+      <button id="reset-map" type="button">Visa hela Lund</button>
+      <div id="map"></div>
+    </section>
+  </main>
+
+  <!-- Leaflet JavaScript -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+
+    // -----------------------------
+    // 1. SKAPA KARTAN
+    // -----------------------------
+
+    const initialCenter = [55.7047, 13.1910];
+    const initialZoom = 14;
+    const map = L.map("map").setView(
+      initialCenter,
+      initialZoom
+    );
+
+
+    // -----------------------------
+    // 2. BAKGRUNDSKARTA
+    // -----------------------------
+
+    L.tileLayer(
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+      }
+    ).addTo(map);
+
+
+    // -----------------------------
+    // 3. MINA PLATSER
+    // -----------------------------
+
+    const platser = [
+
+      {
+        namn: "Lunds domkyrka",
+        kategori: "Landmärken",
+        koordinater: [55.704140, 13.193557],
+        beskrivning: "Hoppas att kryptan är tom även idag.",
+      },
+
+      {
+        namn: "Måsvägen 11",
+        kategori: "Nation",
+        koordinater: [55.708533, 13.169869],
+        beskrivning: "På min  tid...",
+      },
+
+      {
+        namn: "Mårtenstorget",
+        kategori: "Landmärken",
+        koordinater: [55.701701, 13.196029],
+        beskrivning: "Systemet är stängt ikväll, bara att fortsätta gå.",
+      },
+
+      {
+        namn: "Botulfsplatsen",
+        kategori: "Landmärken",
+        koordinater: [55.701839, 13.193907],
+        beskrivning: "Vad har de gjort egentligen?",
+      },
+
+      {
+        namn: "Lund C",
+        kategori: "Landmärken",
+        koordinater: [55.706991, 13.186403],
+        beskrivning: "Inte ska du hem ännu.",
+      },
+
+      {
+        namn: "Clemenstorget",
+        kategori: "Landmärken",
+        koordinater: [55.707062, 13.188257],
+        beskrivning: "Spårvagn, Tåg, buss, taxi, cykel, gång. Vad väljer du?",
+      },
+
+      {
+        namn: "Bantorget",
+        kategori: "Landmärken",
+        koordinater: [55.703856, 13.188335],
+        beskrivning: "Frukost på Grand, någon?",
+      },
+
+      {
+        namn: "Stortorget",
+        kategori: "Landmärken",
+        koordinater: [55.702787, 13.193076],
+        beskrivning: "Här kan man va.",
+      },
+
+      {
+        namn: "Universitetshuset",
+        kategori: "Landmärken",
+        koordinater: [55.705859, 13.193325],
+        beskrivning: "Vad finns där inne egentligen?",
+      },
+
+      {
+        namn: "Kulturen",
+        kategori: "Landmärken",
+        koordinater: [55.704590, 13.196537],
+        beskrivning: "En massa danska reliker.",
+      },
+
+      {
+        namn: "Sankt Hans",
+        kategori: "Tillflykt",
+        koordinater: [55.722898, 13.189883],
+        beskrivning: "Växter och fler växter",
+      },
+
+      {
+        namn: "Skissernas Museum",
+        kategori: "Landmärken",
+        koordinater: [55.707977, 13.198199],
+        beskrivning: "Det som är lite väl kulturellt för kulturen.",
+      },
+
+      {
+        namn: "Café Ariman",
+        kategori: "Nöje",
+        koordinater: [55.703405, 13.193792],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Lundabryggeriets Ölkällare",
+        kategori: "Nöje",
+        koordinater: [55.709169, 13.192340],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Inferno",
+        kategori: "Nöje",
+        koordinater: [55.706193, 13.193181],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Purgatorio",
+        kategori: "Nöje",
+        koordinater: [55.701332, 13.192264],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Shotluckan",
+        kategori: "Nöje",
+        koordinater: [55.703363, 13.193739],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Mat & Destillat",
+        kategori: "Nöje",
+        koordinater: [55.705408, 13.192447],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Lenoteket",
+        kategori: "Nöje",
+        koordinater: [55.705262, 13.192534],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Klostergatans Vin & Delikatess",
+        kategori: "Nöje",
+        koordinater: [55.703906, 13.191730],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Kyrkogatanfem",
+        kategori: "Nöje",
+        koordinater: [55.703799, 13.192540],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Grand Hotel",
+        kategori: "Nöje",
+        koordinater: [55.703877, 13.188994],
+        beskrivning: "",
+      },
+
+      {
+        namn: "O'Learys",
+        kategori: "Nöje",
+        koordinater: [55.704193, 13.189610],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Folk Pizza & Bar",
+        kategori: "Nöje",
+        koordinater: [55.706968, 13.189315],
+        beskrivning: "",
+      },
+
+      {
+        namn: "GASTROnome",
+        kategori: "Nöje",
+        koordinater: [55.704683, 13.187869],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Taperian",
+        kategori: "Nöje",
+        koordinater: [55.702402, 13.193221],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Trädgården",
+        kategori: "Nöje",
+        koordinater: [55.701083, 13.196123],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Shady Burgers",
+        kategori: "Nöje",
+        koordinater: [55.702108, 13.196219],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Creperiet",
+        kategori: "Nöje",
+        koordinater: [55.704181, 13.189505],
+        beskrivning: "",
+      },
+
+      {
+        namn: "La Cucina",
+        kategori: "Nöje",
+        koordinater: [55.706520, 13.181313],
+        beskrivning: "",
+      },
+
+      {
+        namn: "KorvOlle",
+        kategori: "Nöje",
+        koordinater: [55.701383, 13.197686],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Tugg Burgers",
+        kategori: "Nöje",
+        koordinater: [55.703973, 13.190117],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Sannegårdens Pizzeria",
+        kategori: "Nöje",
+        koordinater: [55.702516, 13.196767],
+        beskrivning: "",
+      },
+
+      {
+        namn: "La Pizzeria Italia",
+        kategori: "Nöje",
+        koordinater: [55.702885, 13.189952],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Mediterranean",
+        kategori: "Nöje",
+        koordinater: [55.702924, 13.190426],
+        beskrivning: "",
+      },
+
+      {
+        namn: "MAX",
+        kategori: "Nöje",
+        koordinater: [55.711567, 13.181820],
+        beskrivning: "",
+      },
+
+      {
+        namn: "McDonald's",
+        kategori: "Nöje",
+        koordinater: [55.720650, 13.201041],
+        beskrivning: "",
+      },
+
+      {
+        namn: "Parran",
+        kategori: "Landmärken",
+        koordinater: [55.698389, 13.199533],
+        beskrivning: "R.I.P.",
+      },
+
+      {
+        namn: "Historska Museet",
+        kategori: "Landmärken",
+        koordinater: [55.704329, 13.195087],
+        beskrivning: "Det som är för gammalt för kulturen",
+      },
+
+
+      {
+        namn: "Universitetsbiblioteket",
+        kategori: "Landmärken",
+        koordinater: [55.709107, 13.197179],
+        beskrivning: "Ska du låna böcker? Idag?",
+      },
+
+      {
+        namn: "Botaniska trädgården",
+        kategori: "Tillflykt",
+        koordinater: [55.704196, 13.203290],
+        beskrivning: "Växter och fler växter",
+      },
+
+      {
+        namn: "Stadsparken",
+        kategori: "Tillflykt",
+        koordinater: [55.698890, 13.185875],
+        beskrivning: "Det är inte valborg och du är ändå här?",
+      },
+
+      {
+        namn: "Lundagård",
+        kategori: "Landmärken",
+        koordinater: [55.704794, 13.193854],
+        beskrivning: "Vart ska vi härnäst?",
+      },
+
+      {
+        namn: "Stadsparksdammen",
+        kategori: "Tillflykt",
+        koordinater: [55.697667, 13.186179],
+        beskrivning: "Full av Bayerks öl, förhoppningsvis...",
+      },
+
+      {
+        namn: "AF-Borgen",
+        kategori: "Landmärken",
+        koordinater: [55.705365, 13.195633],
+        beskrivning: "Snart är det Höstblot! Men inte ikväll :(",
+      },
+
+      {
+        namn: "Norra Kyrkogården",
+        kategori: "Tillflykt",
+        koordinater: [55.715254, 13.192733],
+        beskrivning: "I kvällens ära.",
+      },
+
+      {
+        namn: "Östra Kyrkogården",
+        kategori: "Tillflykt",
+        koordinater: [55.702112, 13.201628],
+        beskrivning: "I kvällens ära.",
+      },
+
+      {
+        namn: "Klosterkyrkan",
+        kategori: "Landmärken",
+        koordinater: [55.704265, 13.185984],
+        beskrivning: "I kvällens ära.",
+      },
+
+      {
+        namn: "Allhelgonakyrkan",
+        kategori: "Landmärken",
+        koordinater: [55.709634, 13.194003],
+        beskrivning: "I kvällens ära",
+      },
+
+      {
+        namn: "Blekingska Nation",
+        kategori: "Nation",
+        koordinater: [55.712720, 13.213500],
+        beskrivning: "Mojito utan is, men bara när PQn inte ser.",
+      },
+
+      {
+        namn: "Lunds Nation",
+        kategori: "Nation",
+        koordinater: [55.703541, 13.199785],
+        beskrivning: "När man desperat behöver ett ligg, eller?",
+      },
+
+      {
+        namn: "Smålands Nation",
+        kategori: "Nation",
+        koordinater: [55.697841, 13.198602],
+        beskrivning: "En shot vodka? Ja kamrat!",
+      },
+
+      {
+        namn: "Hallands Nation",
+        kategori: "Nation",
+        koordinater: [55.705590, 13.211104],
+        beskrivning: "Vad är öppet ikväll egentligen?",
+      },
+
+      {
+        namn: "Kalmar Nation",
+        kategori: "Nation",
+        koordinater: [55.706510, 13.198399],
+        beskrivning: "Svartklubb Någon?",
+      },
+
+      {
+        namn: "Malmö Nation",
+        kategori: "Nation",
+        koordinater: [55.704480, 13.201099],
+        beskrivning: "Malmö Nation är ett ställe, men det är inte ett ställe man vill vara på.",
+      },
+
+      {
+        namn: "Casa",
+        kategori: "Nation",
+        koordinater: [55.704677, 13.199830],
+        beskrivning: "Varför är du här? Gå hem.",
+      },
+
+      {
+        namn: "Helsingkrona Nation",
+        kategori: "Nation",
+        koordinater: [55.709548, 13.208104],
+        beskrivning: "Det är Helsingkrona Nation. Det är en nation. Det är en nation som ligger i Lund.",
+      },
+
+      {
+        namn: "Östgöta Nation",
+        kategori: "Nation",
+        koordinater: [55.704544, 13.198056],
+        beskrivning: "Vad ska man säga?",
+      },
+
+      {
+        namn: "Göteborgs Nation",
+        kategori: "Nation",
+        koordinater: [55.704080, 13.201217],
+        beskrivning: "Du ville till Malmö Nation, men hamnade här. Det är samma sak.",
+      },
+
+      {
+        namn: "Wermlands Nation",
+        kategori: "Nation",
+        koordinater: [55.699418, 13.193752],
+        beskrivning: "Du orkade verligen gå ända hit?",
+      },
+
+      {
+        namn: "Krstianstad Nation",
+        kategori: "Nation",
+        koordinater: [55.709018, 13.207416],
+        beskrivning: "Gå inte hit om du behöver tömma blåsan, inte till Casa heller.",
+      },
+
+      {
+        namn: "Sydskånska Nation",
+        kategori: "Nation",
+        koordinater: [55.709415, 13.207022],
+        beskrivning: "En evig lillebror.",
+      },
+
+      {
+        namn: "Västgöta Nation",
+        kategori: "Nation",
+        koordinater: [55.705409, 13.210370],
+        beskrivning: "Varför inte?",
+      },
+
+      {
+        namn: "John Scott's",
+        kategori: "Nöje",
+        koordinater: [55.702806, 13.194225],
+        beskrivning: "",
+      }
+
+    ];
+
+
+    // -----------------------------
+    // 4. LÄGG UT MARKÖRERNA
+    // -----------------------------
+
+    const placeList = document.getElementById("place-list");
+    const search = document.getElementById("search");
+    const categoryFilter = document.getElementById("category-filter");
+    const placeCount = document.getElementById("place-count");
+    const markers = new Map();
+    const categoryColors = {
+      "Landmärken": "#d85f43",
+      "Tillflykt": "#4b8b62",
+      "Nation": "#5368a8",
+      "Nöje": "#a05291"
+    };
+    const detailFields = [
+      ["Öppettider", "öppettider"],
+      ["Inträde", "inträde"],
+      ["Tillgänglighet", "tillgänglighet"],
+      ["Webbplats", "webbplats"]
+    ];
+
+    function getPlaceDetails(plats) {
+      return detailFields
+        .map(function(field) {
+          const value = plats[field[1]];
+          return {
+            label: field[0],
+            value: typeof value === "string" ? value.trim() : ""
+          };
+        })
+        .filter(function(detail) {
+          return detail.value !== "";
+        });
+    }
+
+    function selectPlace(plats) {
+      map.setView(plats.koordinater, 16);
+      markers.get(plats.namn).openPopup();
+      document.querySelectorAll(".place-button").forEach(function(button) {
+        button.setAttribute("aria-current", String(button.dataset.name === plats.namn));
+      });
+    }
+
+    function renderPlaces(query) {
+      const normalizedQuery = query.trim().toLocaleLowerCase("sv");
+      const selectedCategory = categoryFilter.value;
+      const matches = platser
+        .filter(function(plats) {
+          const searchableText = [
+            plats.namn,
+            plats.beskrivning,
+            plats.kategori,
+            ...getPlaceDetails(plats).map(function(detail) {
+              return detail.value;
+            })
+          ].join(" ").toLocaleLowerCase("sv");
+          return searchableText.includes(normalizedQuery)
+            && (!selectedCategory || plats.kategori === selectedCategory);
+        })
+        .sort(function(a, b) {
+          return a.namn.localeCompare(b.namn, "sv");
+        });
+
+      placeList.replaceChildren();
+      placeCount.textContent = matches.length + (matches.length === 1 ? " plats" : " platser");
+
+      markers.forEach(function(marker, name) {
+        const plats = platser.find(function(place) {
+          return place.namn === name;
+        });
+        const isVisible = matches.includes(plats);
+        if (isVisible && !map.hasLayer(marker)) {
+          marker.addTo(map);
+        } else if (!isVisible && map.hasLayer(marker)) {
+          map.removeLayer(marker);
+        }
+      });
+
+      if (matches.length === 0) {
+        const emptyState = document.createElement("p");
+        emptyState.id = "empty-state";
+        emptyState.textContent = "Inga platser matchar dina filter.";
+        placeList.appendChild(emptyState);
+      }
+
+      matches.forEach(function(plats) {
+        const button = document.createElement("button");
+        button.className = "place-button";
+        button.type = "button";
+        button.dataset.name = plats.namn;
+
+        const name = document.createElement("strong");
+        name.textContent = plats.namn;
+        button.appendChild(name);
+        const category = document.createElement("span");
+        category.className = "place-category";
+        category.textContent = plats.kategori;
+        category.style.backgroundColor = categoryColors[plats.kategori];
+        button.appendChild(category);
+        if (plats.beskrivning.trim() !== "") {
+          const description = document.createElement("span");
+          description.textContent = plats.beskrivning.trim();
+          button.appendChild(description);
+        }
+        getPlaceDetails(plats).forEach(function(detail) {
+          const detailText = document.createElement("span");
+          detailText.textContent = detail.label + ": " + detail.value;
+          button.appendChild(detailText);
+        });
+        button.addEventListener("click", function() {
+          selectPlace(plats);
+        });
+        placeList.appendChild(button);
+      });
+    }
+
+    platser.forEach(function(plats) {
+      const popup = document.createElement("div");
+      const title = document.createElement("h3");
+      title.textContent = plats.namn;
+      popup.appendChild(title);
+      if (plats.beskrivning.trim() !== "") {
+        const description = document.createElement("p");
+        description.textContent = plats.beskrivning.trim();
+        popup.appendChild(description);
+      }
+      const details = getPlaceDetails(plats);
+      if (details.length > 0) {
+        const detailList = document.createElement("dl");
+        details.forEach(function(detail) {
+          const label = document.createElement("dt");
+          label.textContent = detail.label;
+          const value = document.createElement("dd");
+          value.textContent = detail.value;
+          detailList.append(label, value);
+        });
+        popup.appendChild(detailList);
+      }
+
+      const markerIcon = L.divIcon({
+        className: "",
+        html: '<span class="map-pin" style="background-color: ' + categoryColors[plats.kategori] + '"></span>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -24]
+      });
+      const marker = L.marker(plats.koordinater, { icon: markerIcon })
+        .addTo(map)
+        .bindPopup(popup);
+      marker.on("click", function() {
+        document.querySelectorAll(".place-button").forEach(function(button) {
+          button.setAttribute("aria-current", String(button.dataset.name === plats.namn));
+        });
+      });
+      markers.set(plats.namn, marker);
+    });
+
+    search.addEventListener("input", function() {
+      renderPlaces(search.value);
+    });
+    categoryFilter.addEventListener("change", function() {
+      renderPlaces(search.value);
+    });
+    Array.from(new Set(platser.map(function(plats) {
+      return plats.kategori;
+    }))).forEach(function(category) {
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = category;
+      categoryFilter.appendChild(option);
+    });
+    document.getElementById("reset-map").addEventListener("click", function() {
+      map.setView(initialCenter, initialZoom);
+      map.closePopup();
+      document.querySelectorAll(".place-button").forEach(function(button) {
+        button.setAttribute("aria-current", "false");
+      });
+    });
+
+    renderPlaces("");
+
+
+  </script>
+
+</body>
+</html>
